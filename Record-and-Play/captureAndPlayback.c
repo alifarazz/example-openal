@@ -51,19 +51,19 @@ int main(int argc, char *argv[])
 	ALuint        alBuffer;
 	/* ALsizei       alBufferLen; */
 	ALuint        alTotalSamples;
-	ALCint        alNCapturedSampales;
-	ALCenum       alFormat;
-	ALCuint       alFreq;
-	ALCsizei      alRingBufferLen;
-	ALCsizei      alSampleSetLen;
-	ALCbyte      *alSampleSet = NULL;
+	ALCint        alcNCapturedSampales;
+	ALCenum       alcFormat;
+	ALCuint       alcFreq;
+	ALCsizei      alcRingBufferLen;
+	ALCsizei      alcSampleSetLen;
+	ALCbyte      *alcSampleSet = NULL;
 	ALCcontext   *context;
 	ALCdevice    *playbackDevice;
 	ALCdevice    *captureDevice;
 
 	alDuration = 1;
 	alResolution = 1; /* bytes per sample */
-	alFormat = AL_FORMAT_MONO8;
+	alcFormat = AL_FORMAT_MONO8;
 
     /**************************************************/
 	/* AL format:        Resolution:				  */
@@ -74,9 +74,9 @@ int main(int argc, char *argv[])
 	/**************************************************/
 
 	/* Magic Formula, Don't Touch */
-	alFreq = SAMPLERATE;
-	alTotalSamples = alFreq * alDuration * alResolution;
-	alRingBufferLen = alTotalSamples * 2; /* EDIT */
+	alcFreq = SAMPLERATE;
+	alTotalSamples = alcFreq * alDuration * alResolution;
+	alcRingBufferLen = alTotalSamples * 2; /* EDIT */
 
 	printf("playback: %s\n",
 		   alcGetString(NULL, ALC_DEFAULT_DEVICE_SPECIFIER));
@@ -92,14 +92,14 @@ int main(int argc, char *argv[])
 		alcReportError(NULL, "Could not Open Playback Device");
 
 	if (NULL == (captureDevice = alcCaptureOpenDevice(
-					 NULL, alFreq, alFormat, alRingBufferLen)))
+					 NULL, alcFreq, alcFormat, alcRingBufferLen)))
 		alcReportError(NULL, "Could not Open Capture Device");
 
 	if (NULL == (context = alcCreateContext(playbackDevice, NULL)))
-		alcReportError(NULL, "Could not Create an OpenAL context");
+		alcReportError(playbackDevice, "Could not Create an OpenAL context");
 
 	if (ALC_TRUE != alcMakeContextCurrent(context))
-		alcReportError(NULL, "Could not Switch to context");
+		alcReportError(playbackDevice, "Could not Switch to context");
 
 	/* No Need for OpenAL 3D Spatialization. */
 	alDistanceModel(AL_NONE);
@@ -109,6 +109,9 @@ int main(int argc, char *argv[])
 	alcGetError(playbackDevice);
 	alcGetError(captureDevice);
 
+	
+	if (!alutInit (&argc, argv))
+		alutReportError();
 	/******************/
 	/* CAPTURE    	  */
 	/******************/
@@ -122,30 +125,29 @@ int main(int argc, char *argv[])
 	do {
 		/* alutSleep(0.2); */
 		alcGetIntegerv(captureDevice, ALC_CAPTURE_SAMPLES,
-				   sizeof(alNCapturedSampales), &alNCapturedSampales);
-		/* printf("%d \n", alNCapturedSampales); */
+				   sizeof(alcNCapturedSampales), &alcNCapturedSampales);
+		/* printf("%d \n", alcNCapturedSampales); */
 
-	} while (alNCapturedSampales < alTotalSamples); /* EDIT (ALCint < ALuint */
+	} while (alcNCapturedSampales < alTotalSamples); /* EDIT (ALCint < ALuint */
 	alcCaptureStop(captureDevice);
-	alSampleSetLen = alNCapturedSampales; /* ALCsizei <- ALCint */
+	alcSampleSetLen = alcNCapturedSampales; /* ALCsizei <- ALCint */
 
-	alSampleSet = (ALCbyte *) malloc(sizeof(ALCbyte) * alSampleSetLen);
+	alcSampleSet = (ALCbyte *) malloc(sizeof(ALCbyte) * alcSampleSetLen);
 	/* Retrieve Samples and Pour alBufferLen of Them Into alBuffer*/
-	alcCaptureSamples(captureDevice, alSampleSet, alSampleSetLen);
+	alcCaptureSamples(captureDevice, alcSampleSet, alcSampleSetLen);
 
+	puts("capture stops");
+	
 	/*******************/
 	/* PLAYBACK	       */
 	/*******************/
-
-	if (!alutInit (&argc, argv))
-		alutReportError();
 
 	alGenSources(1, &alSource);
 	alGenBuffers(1, &alBuffer);
 
 	/* Pour Retrieved Samples to The Generated Buffer, 3rd arg is const */
 	/* 4th arg(ALsizei <- ALCsizei), 5th arg(ALsizei <- ALCuint) */
-	alBufferData(alBuffer, alFormat, alSampleSet, alSampleSetLen, alFreq);
+	alBufferData(alBuffer, alcFormat, alcSampleSet, alcSampleSetLen, alcFreq);
 	alSourcei(alSource, AL_BUFFER, alBuffer); /* 3rd arg(ALint <- ALuint) */
 
 	alSourcePlay(alSource);
@@ -169,7 +171,7 @@ int main(int argc, char *argv[])
 	/* Clean UP!     	 */
 	/*********************/
 
-	free(alSampleSet);
+	free(alcSampleSet);
 
 	alDeleteSources(1, &alSource);
 	alDeleteBuffers(1, &alBuffer);
@@ -183,7 +185,7 @@ int main(int argc, char *argv[])
 	alcCloseDevice(playbackDevice);
 	alcCloseDevice(captureDevice);
 
-	alReportError("alGeterror: ");
+	alReportError("alGetError: ");
 
 	return 0;
 }
